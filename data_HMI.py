@@ -5,6 +5,7 @@ if __name__ == '__main__':
     from glob import glob
     import numpy as np
     from time import time
+    from tqdm import tqdm
 
     st = time()
 
@@ -19,19 +20,33 @@ if __name__ == '__main__':
         days = os.listdir(dir_HMI)
         for day in days:
             list_HMI.extend(sorted(glob(os.path.join(dir_HMI, day, '*.fits'))))
-    print(len(list_HMI))
-    for HMI in list_HMI:
+    for HMI in tqdm(list_HMI):
         name = os.path.splitext(os.path.split(HMI)[-1])[0]
         hdu = fits.open(HMI)
         hdu.verify('fix')  # I need to declare this for opening data.
 
         header = hdu[1].header  # Note that SDO's compressed data is accessed with index 1 not 0
-        R_SUN = header['RSUN_OBS']
-        NAXIS = header['NAXIS1']
 
-        ratio = 196./R_SUN  # 1024x1024
+        R_SUN_arc = header['RSUN_OBS']  # in arcsecond. Remember HMI has 0.5 arcsec per pixel
+        R_SUN = R_SUN_arc / 0.5
+        NAXIS = header['NAXIS1']
+        CENTER_X = int(header['CRPIX1'])
+        CENTER_Y = int(header['CRPIX2'])
+
+        ratio = (392. + 4.0) / R_SUN  # 1024x1024  + 4.0 is to get rid of the limb noise.
 
         data = hdu[1].data
+        data = data[CENTER_Y - 1 - int(R_SUN): CENTER_Y - 1 + int(R_SUN),
+               CENTER_X - 1 - int(R_SUN): CENTER_X - 1 + int(R_SUN)]
+
+        if data.shape != (4096, 4096):
+            pad = (4096 - data.shape[0]) // 2
+            if (4096 - data.shape[0]) % 2 == 0:
+                data = np.pad(data, ((pad, pad), (pad, pad)), 'constant', constant_values=0)
+            else:
+                data = np.pad(data, ((pad + 1, pad), (pad + 1, pad)), 'constant', constant_values=0)
+        assert data.shape == (4096, 4096)
+
         data = np.clip(data, -100, 100)
         data -= np.nanmin(data)
         data /= np.nanmax(data)
@@ -51,8 +66,12 @@ if __name__ == '__main__':
                 data = np.pad(data, ((pad + 1, pad), (pad + 1, pad)), 'constant', constant_values=0)
         assert data.shape == (1024, 1024)
         data = np.fliplr(data)
-
+        for i in range(1024):
+            for j in range(1024):
+                if (i - 511) ** 2 + (j - 511) ** 2 > 392 ** 2:
+                    data[i, j] = 0
+        # data[511 - 392: 511 + 392, 511] = 255
+        # data[511, 511 - 392: 511 + 392] = 255
         data = Image.fromarray(data)
         data.save(os.path.join(dir_dst, name + '.png'))
-
     print(time() - st)
