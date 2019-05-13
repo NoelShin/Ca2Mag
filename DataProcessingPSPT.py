@@ -45,16 +45,6 @@ for year in list_years:
         XRADIUS = float(header['XRADIUS'])  # X radius
         YRADIUS = float(header['YRADIUS'])  # Y radius
 
-        CENTER_X = float(header['CENTER_X'])  # X center coordinate of the sun
-        CENTER_Y = float(header['CENTER_Y'])  # Y center coordinate of the sun
-
-        COORDXS = float(header['COORDXS'])  # X center coordinate of south polar region
-        COORDYS = float(header['COORDYS'])  # Y center coordinate of south polar region
-
-        COORDXN = float(header['COORDXN'])  # X center coordinate of north polar region
-        COORDYN = float(header['COORDYN'])  # Y center coordinate of north polar region
-
-        X_C, Y_C = int(np.around(CENTER_X)), int(np.around(CENTER_Y))
         ratio = (392. / YRADIUS, 392. / XRADIUS)  # Ratio regarding HMI radius 392 (for 1024x1024 case)
 
         theta = float(header['SOLAR_P0'])
