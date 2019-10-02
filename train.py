@@ -29,15 +29,24 @@ if __name__ == '__main__':
     lr = opt.lr
 
     dataset = CustomDataset(opt)
-    data_loader = DataLoader(dataset=dataset, batch_size=opt.batch_size, num_workers=opt.n_workers, shuffle=opt.shuffle)
+    data_loader = DataLoader(dataset=dataset,
+                             batch_size=opt.batch_size,
+                             num_workers=opt.n_workers,
+                             shuffle=opt.shuffle)
 
     G = Generator(opt).apply(weights_init).to(device=device, dtype=dtype)
     D = Discriminator(opt).apply(weights_init).to(device=device, dtype=dtype)
 
     criterion = Loss(opt)
 
-    G_optim = torch.optim.Adam(G.parameters(), lr=lr, betas=(opt.beta1, opt.beta2), eps=opt.eps)
-    D_optim = torch.optim.Adam(D.parameters(), lr=lr, betas=(opt.beta1, opt.beta2), eps=opt.eps)
+    G_optim = torch.optim.Adam(G.parameters(),
+                               lr=lr,
+                               betas=(opt.beta1, opt.beta2),
+                               eps=opt.eps)
+    D_optim = torch.optim.Adam(D.parameters(),
+                               lr=lr,
+                               betas=(opt.beta1, opt.beta2),
+                               eps=opt.eps)
 
     manager = Manager(opt)
 
@@ -78,8 +87,10 @@ if __name__ == '__main__':
                 test_model_dir = test_opt.model_dir
 
                 test_dataset = CustomDataset(test_opt)
-                test_data_loader = DataLoader(dataset=test_dataset, batch_size=test_opt.batch_size,
-                                              num_workers=test_opt.n_workers, shuffle=test_opt.shuffle)
+                test_data_loader = DataLoader(dataset=test_dataset,
+                                              batch_size=test_opt.batch_size,
+                                              num_workers=test_opt.n_workers,
+                                              shuffle=test_opt.shuffle)
 
                 for p in G.parameters():
                     p.requires_grad_(False)
