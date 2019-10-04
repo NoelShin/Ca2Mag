@@ -7,11 +7,11 @@ class BaseOption(object):
         self.parser = argparse.ArgumentParser()
 
         self.parser.add_argument('--debug', action='store_true', default=False, help='for checking code')
-        self.parser.add_argument('--gpu_ids', type=int, default=0, help='gpu number. If -1, use cpu')
-        self.parser.add_argument('--HD', action='store_true', default=False, help='if True, use pix2pixHD' )
+        self.parser.add_argument('--gpu_ids', type=int, default=1, help='gpu number. If -1, use cpu')
+        self.parser.add_argument('--HD', action='store_true', default=True, help='if True, use pix2pixHD')
 
         self.parser.add_argument('--batch_size', type=int, default=1, help='the number of batch_size')
-        self.parser.add_argument('--dataset_name', type=str, default='Over_0_std', help='[Cityscapes, Custom]')
+        self.parser.add_argument('--dataset_name', type=str, default='Over_0_std_0107', help='[Cityscapes, Custom]')
         self.parser.add_argument('--data_type', type=int, default=32, help='float dtype')
         self.parser.add_argument('--image_height', type=int, default=1024, help='[512, 1024]')
         self.parser.add_argument('--image_mode', type=str, default='png', help='extension for saving image')
@@ -46,6 +46,9 @@ class BaseOption(object):
 
         dataset_name = opt.dataset_name
         model_name = "pix2pixHD" if opt.HD else 'pix2pix'
+        model_name += "_padding" if opt.padding_size > 0 else ''
+        model_name += "_rotation{}".format(str(opt.max_rotation_angle)) if opt.max_rotation_angle > 0 else ''
+
         os.makedirs(os.path.join('./checkpoints', dataset_name, 'Image', 'Training', model_name), exist_ok=True)
         os.makedirs(os.path.join('./checkpoints', dataset_name, 'Image', 'Test', model_name), exist_ok=True)
         os.makedirs(os.path.join('./checkpoints', dataset_name, 'Model', model_name), exist_ok=True)
@@ -103,8 +106,8 @@ class TrainOption(BaseOption):
         self.parser.add_argument('--is_train', action='store_true', default=True, help='train flag')
 
         # data augmentation
-        self.parser.add_argument('--padding_size', default=10, help='padding size')
-        self.parser.add_argument('--rotation', default=15, help='rotation angle(degree)')
+        self.parser.add_argument('--padding_size', default=0, help='padding size')
+        self.parser.add_argument('--max_rotation_angle', type=int, default=30, help='rotation angle(degree)')
 
         self.parser.add_argument('--beta1', type=float, default=0.5)
         self.parser.add_argument('--beta2', type=float, default=0.999)
