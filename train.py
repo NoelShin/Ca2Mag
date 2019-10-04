@@ -43,6 +43,7 @@ if __name__ == '__main__':
                                lr=lr,
                                betas=(opt.beta1, opt.beta2),
                                eps=opt.eps)
+
     D_optim = torch.optim.Adam(D.parameters(),
                                lr=lr,
                                betas=(opt.beta1, opt.beta2),
@@ -80,6 +81,7 @@ if __name__ == '__main__':
                        'generated_tensor': generated_tensor.detach()}
 
             manager(package)
+
             if opt.val_during_train and (current_step % val_freq == 0):
                 G.eval()
                 test_image_dir = os.path.join(test_opt.image_dir, str(current_step))
