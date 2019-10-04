@@ -132,7 +132,7 @@ class PatchDiscriminator(nn.Module):
             block = getattr(self, 'block_{}'.format(i))
             result.append(block(result[-1]))
 
-        return result  # [1:]  # except for the input
+        return result[1:]  # except for the input
 
 
 class Discriminator(nn.Module):

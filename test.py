@@ -11,9 +11,9 @@ if __name__ == '__main__':
 
     ITERATION = 470000
     STD = 0
+    #abcsafdasdf
 
     MODEL_NAME = 'pix2pix'
-
     torch.backends.cudnn.benchmark = True
 
     dir_input = './datasets/Over_{}_std/Test/Input'.format(str(STD))
