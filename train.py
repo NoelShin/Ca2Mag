@@ -77,6 +77,8 @@ if __name__ == '__main__':
                        'G_loss': G_loss.detach().item(),
                        'D_state_dict': D.state_dict(),
                        'G_state_dict': G.state_dict(),
+                       'D_optim_state_dict': D_optim.state_dict(),
+                       'G_optim_state_dict': G_optim.state_dict(),
                        'target_tensor': target_tensor,
                        'generated_tensor': generated_tensor.detach()}
 
