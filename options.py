@@ -10,6 +10,10 @@ class BaseOption(object):
         self.parser.add_argument('--gpu_ids', type=int, default=1, help='gpu number. If -1, use cpu')
         self.parser.add_argument('--HD', action='store_true', default=True, help='if True, use pix2pixHD')
 
+        # data augmentation
+        self.parser.add_argument('--padding_size', default=0, help='padding size')
+        self.parser.add_argument('--max_rotation_angle', type=int, default=90, help='rotation angle(degree)')
+
         self.parser.add_argument('--batch_size', type=int, default=1, help='the number of batch_size')
         self.parser.add_argument('--dataset_name', type=str, default='Over_0_std_0107', help='[Cityscapes, Custom]')
         self.parser.add_argument('--data_type', type=int, default=32, help='float dtype')
@@ -61,14 +65,6 @@ class BaseOption(object):
         opt.model_dir = os.path.join('./checkpoints', dataset_name, 'Model', model_name)
         log_path = os.path.join('./checkpoints/', dataset_name, 'Model', model_name, 'opt.txt')
 
-        if os.path.isfile(log_path) and opt.is_train:
-            permission = input(
-                "{} log already exists. Do you really want to overwrite this log? Y/N. : ".format(model_name + '/opt'))
-            if permission == 'Y':
-                pass
-            else:
-                raise NotImplementedError("Please check {}".format(log_path))
-
         if opt.debug:
             opt.display_freq = 1
             opt.epoch_decay = 2
@@ -78,25 +74,37 @@ class BaseOption(object):
 
             return opt
 
-        else:
-            with open(os.path.join(opt.model_dir, 'Analysis.txt'), 'wt') as analysis:
-                analysis.write('Iteration, CorrCoef_TUMF, CorrCoef_1x1, CorrCoef_2x2, CorrCoef_4x4, CorrCoef_8x8, '
-                               'R1_mean, R1_std, R2_mean, R2_std\n')
+        if os.path.isfile(log_path) and opt.is_train:
+            permission = input(
+                "{} log already exists. Do you really want to overwrite this log? Y/N. : ".format(model_name + '/opt'))
+            if permission in ['y', 'Y', 'yes']:
+                pass
+            else:
+                permission = input("Do you want to resume training {}? Y/N. : ".format(model_name))
+                if permission in ['y', 'Y', 'yes']:
+                    return opt
 
-                analysis.close()
+                else:
+                    raise NotImplementedError("Please check {}".format(log_path))
 
-            args = vars(opt)
-            with open(log_path, 'wt') as log:
-                log.write('-' * 50 + 'Options' + '-' * 50 + '\n')
-                print('-' * 50 + 'Options' + '-' * 50)
-                for k, v in sorted(args.items()):
-                    log.write('{}: {}\n'.format(str(k), str(v)))
-                    print("{}: {}".format(str(k), str(v)))
-                log.write('-' * 50 + 'End' + '-' * 50)
-                print('-' * 50 + 'End' + '-' * 50)
-                log.close()
+        with open(os.path.join(opt.model_dir, 'Analysis.txt'), 'wt') as analysis:
+            analysis.write('Iteration, CorrCoef_TUMF, CorrCoef_1x1, CorrCoef_2x2, CorrCoef_4x4, CorrCoef_8x8, '
+                           'R1_mean, R1_std, R2_mean, R2_std\n')
 
-            return opt
+            analysis.close()
+
+        args = vars(opt)
+        with open(log_path, 'wt') as log:
+            log.write('-' * 50 + 'Options' + '-' * 50 + '\n')
+            print('-' * 50 + 'Options' + '-' * 50)
+            for k, v in sorted(args.items()):
+                log.write('{}: {}\n'.format(str(k), str(v)))
+                print("{}: {}".format(str(k), str(v)))
+            log.write('-' * 50 + 'End' + '-' * 50)
+            print('-' * 50 + 'End' + '-' * 50)
+            log.close()
+
+        return opt
 
 
 class TrainOption(BaseOption):
@@ -104,10 +112,7 @@ class TrainOption(BaseOption):
         super(TrainOption, self).__init__()
 
         self.parser.add_argument('--is_train', action='store_true', default=True, help='train flag')
-
-        # data augmentation
-        self.parser.add_argument('--padding_size', default=0, help='padding size')
-        self.parser.add_argument('--max_rotation_angle', type=int, default=30, help='rotation angle(degree)')
+        self.parser.add_argument('--latest', type=int, default=160000, help='iteration for resuming training.')
 
         self.parser.add_argument('--beta1', type=float, default=0.5)
         self.parser.add_argument('--beta2', type=float, default=0.999)
