@@ -29,7 +29,10 @@ if __name__ == '__main__':
     lr = opt.lr
 
     dataset = CustomDataset(opt)
-    data_loader = DataLoader(dataset=dataset, batch_size=opt.batch_size, num_workers=opt.n_workers, shuffle=opt.shuffle)
+    data_loader = DataLoader(dataset=dataset,
+                             batch_size=opt.batch_size,
+                             num_workers=opt.n_workers,
+                             shuffle=not opt.no_shuffle)
 
     G = Generator(opt).apply(weights_init).to(device=device, dtype=dtype)
     D = Discriminator(opt).apply(weights_init).to(device=device, dtype=dtype)
@@ -39,7 +42,7 @@ if __name__ == '__main__':
     G_optim = torch.optim.Adam(G.parameters(), lr=lr, betas=(opt.beta1, opt.beta2), eps=opt.eps)
     D_optim = torch.optim.Adam(D.parameters(), lr=lr, betas=(opt.beta1, opt.beta2), eps=opt.eps)
 
-    if opt.latest != 0 and os.path.isfile(opt.model_dir + '/' + str(opt.latest) + '_dict.pt'):
+    if opt.latest and os.path.isfile(opt.model_dir + '/' + str(opt.latest) + '_dict.pt'):
         pt_file = torch.load(opt.model_dir + '/' + str(opt.latest) + '_dict.pt')
         init_epoch = pt_file['Epoch']
         print("Resume at epoch: ", init_epoch)
@@ -47,21 +50,23 @@ if __name__ == '__main__':
         D.load_state_dict(pt_file['D_state_dict'])
         G_optim.load_state_dict(pt_file['G_optim_state_dict'])
         D_optim.load_state_dict(pt_file['D_optim_state_dict'])
+        current_step = init_epoch * len(dataset)
 
         for param_group in G_optim.param_groups:
             lr = param_group['lr']
 
     else:
         init_epoch = 1
+        current_step = 0
 
     manager = Manager(opt)
 
-    current_step = 0
     total_step = opt.n_epochs * len(data_loader)
     start_time = datetime.datetime.now()
     for epoch in range(init_epoch, opt.n_epochs + 1):
         for input, target, _, _ in tqdm(data_loader):
             G.train()
+
             current_step += 1
             input, target = input.to(device=device, dtype=dtype), target.to(device, dtype=dtype)
 
@@ -95,8 +100,10 @@ if __name__ == '__main__':
                 test_model_dir = test_opt.model_dir
 
                 test_dataset = CustomDataset(test_opt)
-                test_data_loader = DataLoader(dataset=test_dataset, batch_size=test_opt.batch_size,
-                                              num_workers=test_opt.n_workers, shuffle=test_opt.shuffle)
+                test_data_loader = DataLoader(dataset=test_dataset,
+                                              batch_size=test_opt.batch_size,
+                                              num_workers=test_opt.n_workers,
+                                              shuffle=not test_opt.no_shuffle)
 
                 for p in G.parameters():
                     p.requires_grad_(False)

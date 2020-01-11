@@ -7,20 +7,34 @@ class BaseOption(object):
         self.parser = argparse.ArgumentParser()
 
         self.parser.add_argument('--debug', action='store_true', default=False, help='for checking code')
-        self.parser.add_argument('--gpu_ids', type=int, default=1, help='gpu number. If -1, use cpu')
-        self.parser.add_argument('--HD', action='store_true', default=True, help='if True, use pix2pixHD')
+        self.parser.add_argument('--gpu_ids', type=int, default=2, help='gpu number. If -1, use cpu')
+        self.parser.add_argument('--HD', action='store_true', default=False, help='if True, use pix2pixHD')
+        self.parser.add_argument('--data_format_input', type=str, default='png',
+                                 help="Input data extension. This will be used for loading and saving. [npy, png]")
+        self.parser.add_argument('--data_format_target', type=str, default='npy',
+                                 help="Target data extension.")
+
+        # data option
+        # dynamic range options are applied to fits, fts, and npy extension data. If an extension is png, jpeg, or jpg,
+        # dynamic range options are not used.
+        # If dynamic range is 100, it clips the data values at -100 and 100.
+        # When data are normlized, its normalized by 2 * dynamic range to ensure all the values are between [-1, 1]
+        # after normalized.
+        self.parser.add_argument('--dynamic_range_input', type=int, default=100, help="Dynamic range or input")
+        self.parser.add_argument('--dynamic_range_target', type=int, default=1400, help="Dynamic range of target")
 
         # data augmentation
-        self.parser.add_argument('--padding_size', default=0, help='padding size')
-        self.parser.add_argument('--max_rotation_angle', type=int, default=90, help='rotation angle(degree)')
+        self.parser.add_argument('--padding_size', type=int, default=0, help='padding size')
+        self.parser.add_argument('--max_rotation_angle', type=int, default=30, help='rotation angle in degrees')
 
+        self.parser.add_argument('--additional_name', type=str, default="", help="additional mark for checkpoint dir")
         self.parser.add_argument('--batch_size', type=int, default=1, help='the number of batch_size')
-        self.parser.add_argument('--dataset_name', type=str, default='Over_0_std_0107', help='[Cityscapes, Custom]')
+        self.parser.add_argument('--dataset_name', type=str, default='Over_0_std_0107', help='[dataset directory name')
         self.parser.add_argument('--data_type', type=int, default=32, help='float dtype')
         self.parser.add_argument('--image_height', type=int, default=1024, help='[512, 1024]')
         self.parser.add_argument('--image_mode', type=str, default='png', help='extension for saving image')
         self.parser.add_argument('--max_ch', type=int, default=1024, help='maximum number of channel for pix2pix')
-        self.parser.add_argument('--n_downsample', type=int, default=5,
+        self.parser.add_argument('--n_downsample', type=int, default=4,
                                  help='how many times you want to downsample input data in G')
         self.parser.add_argument('--n_residual', type=int, default=9, help='the number of residual blocks in G')
         self.parser.add_argument('--n_workers', type=int, default=2, help='how many threads you want to use')
@@ -28,19 +42,16 @@ class BaseOption(object):
                                  help='[BatchNorm2d, InstanceNorm2d]')
         self.parser.add_argument('--padding_type', type=str, default='reflection',
                                  help='[reflection, replication, zero]')
-        self.parser.add_argument('--use_boundary_map', action='store_true', default=True,
-                                 help='if you want to use boundary map')
         self.parser.add_argument('--val_during_train', action='store_true', default=False)
 
     def parse(self):
         opt = self.parser.parse_args()
-
         opt.format = 'png'
         opt.n_df = 64
         opt.input_ch = 1
         opt.flip = False
 
-        opt.n_gf = 32 if opt.HD and (opt.image_height == 1024) else 64
+        opt.n_gf = 64 # 32 if opt.HD and (opt.image_height == 1024) else 64
         opt.output_ch = 1
 
         if opt.data_type == 16:
@@ -52,6 +63,7 @@ class BaseOption(object):
         model_name = "pix2pixHD" if opt.HD else 'pix2pix'
         model_name += "_padding" if opt.padding_size > 0 else ''
         model_name += "_rotation{}".format(str(opt.max_rotation_angle)) if opt.max_rotation_angle > 0 else ''
+        model_name += opt.additional_name
 
         os.makedirs(os.path.join('./checkpoints', dataset_name, 'Image', 'Training', model_name), exist_ok=True)
         os.makedirs(os.path.join('./checkpoints', dataset_name, 'Image', 'Test', model_name), exist_ok=True)
@@ -111,26 +123,23 @@ class TrainOption(BaseOption):
     def __init__(self):
         super(TrainOption, self).__init__()
 
-        self.parser.add_argument('--is_train', action='store_true', default=True, help='train flag')
-        self.parser.add_argument('--latest', type=int, default=160000, help='iteration for resuming training.')
+        self.parser.add_argument('--is_train', type=bool, default=True, help='train flag')
+        self.parser.add_argument('--latest', type=int, default=0, help='Resume epoch')
 
         self.parser.add_argument('--beta1', type=float, default=0.5)
         self.parser.add_argument('--beta2', type=float, default=0.999)
         self.parser.add_argument('--display_freq', type=int, default=100)
         self.parser.add_argument('--epoch_decay', type=int, default=100, help='when to start decay the lr')
-        self.parser.add_argument('--FM', action='store_true', default=True, help='switch for feature matching loss')
-        self.parser.add_argument('--flip', action='store_true', default=True, help='switch for flip input data')
         self.parser.add_argument('--GAN_type', type=str, default='LSGAN', help='[GAN, LSGAN, WGAN_GP]')
         self.parser.add_argument('--lambda_FM', type=int, default=10, help='weight for FM loss')
         self.parser.add_argument('--lr', type=float, default=0.0002)
         self.parser.add_argument('--report_freq', type=int, default=5)
         self.parser.add_argument('--save_freq', type=int, default=5000)
-        self.parser.add_argument('--shuffle', action='store_true', default=True,
-                                 help='if you want to shuffle the order')
+        self.parser.add_argument('--no_shuffle', action='store_true', default=False, help='if you want to shuffle the order')
         self.parser.add_argument('--n_D', type=int, default=2,
                                  help='how many discriminators in differet scales you want to use')
         self.parser.add_argument('--n_epochs', type=int, default=200, help='how many epochs you want to train')
-        self.parser.add_argument('--VGG_loss', action='store_true', default=True,
+        self.parser.add_argument('--VGG_loss', action='store_true', default=False,
                                  help='if you want to use VGGNet for additional feature matching loss')
         self.parser.add_argument('--val_freq', type=int, default=5000)
 
@@ -139,6 +148,5 @@ class TestOption(BaseOption):
     def __init__(self):
         super(TestOption, self).__init__()
 
-        self.parser.add_argument('--is_train', action='store_true', default=False, help='test flag')
-        self.parser.add_argument('--shuffle', action='store_true', default=False,
-                                 help='if you want to shuffle the order')
+        self.parser.add_argument('--is_train', type=bool, default=False, help='test flag')
+        self.parser.add_argument('--no_shuffle', type=bool, default=True, help='if you want to shuffle the order')
