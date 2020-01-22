@@ -53,30 +53,40 @@ class Generator(nn.Module):
                                 nn.Tanh()]
 
                 elif 1 <= i <= idx_max_ch:
-                    down_block = [act_down, nn.Conv2d(n_gf, 2 * n_gf, kernel_size=4, padding=1, stride=2, bias=False),
+                    down_block = [act_down,
+                                  nn.Conv2d(n_gf, 2 * n_gf, kernel_size=4, padding=1, stride=2, bias=False),
                                   norm(2 * n_gf)]
+
                     up_block = [act_up,
                                 nn.ConvTranspose2d(4 * n_gf, n_gf, kernel_size=4, padding=1, stride=2, bias=False),
                                 norm(n_gf)]
 
                 elif idx_max_ch < i < n_downsample - 4:
-                    down_block = [act_down, nn.Conv2d(n_gf, n_gf, kernel_size=4, padding=1, stride=2, bias=False),
+                    down_block = [act_down,
+                                  nn.Conv2d(n_gf, n_gf, kernel_size=4, padding=1, stride=2, bias=False),
                                   norm(n_gf)]
+
                     up_block = [act_up,
                                 nn.ConvTranspose2d(2 * n_gf, n_gf, kernel_size=4, padding=1, stride=2, bias=False),
                                 norm(n_gf)]
 
                 elif n_downsample - 4 <= i < n_downsample - 1:
-                    down_block = [act_down, nn.Conv2d(n_gf, n_gf, kernel_size=4, padding=1, stride=2, bias=False),
+                    down_block = [act_down,
+                                  nn.Conv2d(n_gf, n_gf, kernel_size=4, padding=1, stride=2, bias=False),
                                   norm(n_gf)]
+
                     up_block = [act_up,
                                 nn.ConvTranspose2d(2 * n_gf, n_gf, kernel_size=4, padding=1, stride=2, bias=False),
                                 norm(n_gf), nn.Dropout2d(0.5, inplace=True)]
 
                 else:
-                    down_block = [act_down, nn.Conv2d(n_gf, n_gf, kernel_size=4, padding=1, stride=2, bias=False)]
-                    up_block = [act_up, nn.ConvTranspose2d(n_gf, n_gf, kernel_size=4, padding=1, stride=2, bias=False),
-                                norm(n_gf), nn.Dropout2d(0.5, inplace=True)]
+                    down_block = [act_down,
+                                  nn.Conv2d(n_gf, n_gf, kernel_size=4, padding=1, stride=2, bias=False)]
+
+                    up_block = [act_up,
+                                nn.ConvTranspose2d(n_gf, n_gf, kernel_size=4, padding=1, stride=2, bias=False),
+                                norm(n_gf),
+                                nn.Dropout2d(0.5, inplace=True)]
 
                 self.add_module('Down_block_{}'.format(i), nn.Sequential(*down_block))
                 self.add_module('Up_block_{}'.format(i), nn.Sequential(*up_block))
@@ -95,6 +105,7 @@ class Generator(nn.Module):
             layers = [x]
             for i in range(self.n_downsample):
                 layers += [getattr(self, 'Down_block_{}'.format(i))(layers[-1])]
+
             x = getattr(self, 'Up_block_{}'.format(self.n_downsample - 1))(layers[-1])
             for i in range(self.n_downsample - 1, 0, -1):
                 x = getattr(self, 'Up_block_{}'.format(i - 1))(torch.cat([x, layers[i]], dim=1))

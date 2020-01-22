@@ -52,7 +52,9 @@ class CustomDataset(Dataset):
                 label_tensor = torch.tensor(label_array)
                 label_tensor -= 0.5
                 label_tensor = label_tensor / 0.5
-                label_tensor = label_tensor.unsqueeze(dim=0)
+
+                if len(label_tensor.shape) == 2:  # if the label tensor has only HxW dimension.
+                    label_tensor = label_tensor.unsqueeze(dim=0)
 
                 # label_tensor = Normalize(mean=[0.5], std=[0.5])(label_tensor)
 
@@ -71,7 +73,7 @@ class CustomDataset(Dataset):
             else:
                 NotImplementedError("Please check data_format_input option. It has to be npy or png.")
 
-            if self.target_format == "npy":
+            if self.target_format in ["fits", "fts", "npy"]:
                 if self.target_format in ["fits", "fts"]:
                     target_array = np.array(fits.open(self.target_path_list[index]))
                 else:
@@ -81,8 +83,8 @@ class CustomDataset(Dataset):
                 target_array = self.__pad(target_array, self.opt.padding_size)
                 target_array = self.__random_crop(target_array)
                 target_array = self.__convert_range(target_array,
-                                                    min=-self.opt.dynamic_range_input,
-                                                    max=2 * self.opt.dynamic_range_input)
+                                                    min=-self.opt.dynamic_range_target,
+                                                    max=2 * self.opt.dynamic_range_target)
                 target_tensor = torch.tensor(target_array, dtype=torch.float32)
                 target_tensor -= 0.5
                 target_tensor = target_tensor / 0.5
@@ -94,7 +96,7 @@ class CustomDataset(Dataset):
                                       Lambda(lambda x: self.__rotate(x)),
                                       Lambda(lambda x: self.__pad(x, self.opt.padding_size)),
                                       Lambda(lambda x: self.__random_crop(x)),
-                                      Lambda(lambda x: self.__convert_range(x, min=0, max=255)),
+                                      Lambda(lambda x: self.__convert_range(x, min=0.0, max=255.0)),
                                       ToTensor(),
                                       Normalize(mean=[0.5], std=[0.5])])
 
@@ -140,8 +142,8 @@ class CustomDataset(Dataset):
                     target_array = np.load(self.target_path_list[index], allow_pickle=True)
 
                 target_array = self.__convert_range(target_array,
-                                                    min=-self.opt.dynamic_range_input,
-                                                    max=2 * self.opt.dynamic_range_input)
+                                                    min=-self.opt.dynamic_range_target,
+                                                    max=2 * self.opt.dynamic_range_target)
                 target_tensor = torch.tensor(target_array, dtype=torch.float32)
                 target_tensor -= 0.5
                 target_tensor = target_tensor / 0.5
@@ -167,7 +169,6 @@ class CustomDataset(Dataset):
         x = np.array(x)
         x = x[self.offset_x: self.offset_x + 1024, self.offset_y: self.offset_y + 1024]
         return x
-        # return Image.fromarray(x)
 
     @staticmethod
     def __convert_range(x, min, max):

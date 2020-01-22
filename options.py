@@ -8,7 +8,7 @@ class BaseOption(object):
 
         self.parser.add_argument('--debug', action='store_true', default=False, help='for checking code')
         self.parser.add_argument('--gpu_ids', type=int, default=2, help='gpu number. If -1, use cpu')
-        self.parser.add_argument('--HD', action='store_true', default=False, help='if True, use pix2pixHD')
+        self.parser.add_argument('--HD', action='store_true', default=True, help='if True, use pix2pixHD')
         self.parser.add_argument('--data_format_input', type=str, default='png',
                                  help="Input data extension. This will be used for loading and saving. [npy, png]")
         self.parser.add_argument('--data_format_target', type=str, default='npy',
@@ -17,17 +17,16 @@ class BaseOption(object):
         # data option
         # dynamic range options are applied to fits, fts, and npy extension data. If an extension is png, jpeg, or jpg,
         # dynamic range options are not used.
-        # If dynamic range is 100, it clips the data values at -100 and 100.
         # When data are normlized, its normalized by 2 * dynamic range to ensure all the values are between [-1, 1]
         # after normalized.
-        self.parser.add_argument('--dynamic_range_input', type=int, default=100, help="Dynamic range or input")
+        self.parser.add_argument('--dynamic_range_input', type=int, default=100, help="Dynamic range of input")
         self.parser.add_argument('--dynamic_range_target', type=int, default=1400, help="Dynamic range of target")
 
         # data augmentation
         self.parser.add_argument('--padding_size', type=int, default=0, help='padding size')
-        self.parser.add_argument('--max_rotation_angle', type=int, default=30, help='rotation angle in degrees')
+        self.parser.add_argument('--max_rotation_angle', type=int, default=0, help='rotation angle in degrees')
 
-        self.parser.add_argument('--additional_name', type=str, default="", help="additional mark for checkpoint dir")
+        self.parser.add_argument('--additional_name', type=str, default="test123", help="additional mark for checkpoint dir")
         self.parser.add_argument('--batch_size', type=int, default=1, help='the number of batch_size')
         self.parser.add_argument('--dataset_name', type=str, default='Over_0_std_0107', help='[dataset directory name')
         self.parser.add_argument('--data_type', type=int, default=32, help='float dtype')
@@ -46,75 +45,102 @@ class BaseOption(object):
 
     def parse(self):
         opt = self.parser.parse_args()
-        opt.format = 'png'
-        opt.n_df = 64
         opt.input_ch = 1
-        opt.flip = False
-
-        opt.n_gf = 64 # 32 if opt.HD and (opt.image_height == 1024) else 64
+        opt.n_df = 64
+        opt.n_gf = 64  # 32 if opt.HD and (opt.image_height == 1024) else 64
         opt.output_ch = 1
 
-        if opt.data_type == 16:
-            opt.eps = 1e-4
-        elif opt.data_type == 32:
-            opt.eps = 1e-8
-
-        dataset_name = opt.dataset_name
-        model_name = "pix2pixHD" if opt.HD else 'pix2pix'
-        model_name += "_padding" if opt.padding_size > 0 else ''
-        model_name += "_rotation{}".format(str(opt.max_rotation_angle)) if opt.max_rotation_angle > 0 else ''
-        model_name += opt.additional_name
-
-        os.makedirs(os.path.join('./checkpoints', dataset_name, 'Image', 'Training', model_name), exist_ok=True)
-        os.makedirs(os.path.join('./checkpoints', dataset_name, 'Image', 'Test', model_name), exist_ok=True)
-        os.makedirs(os.path.join('./checkpoints', dataset_name, 'Model', model_name), exist_ok=True)
-
         if opt.is_train:
+            opt.format = 'png'
+
+            opt.flip = False
+
+            if opt.data_type == 16:
+                opt.eps = 1e-4
+            elif opt.data_type == 32:
+                opt.eps = 1e-8
+
+            dataset_name = opt.dataset_name
+            model_name = "pix2pixHD" if opt.HD else 'pix2pix'
+            model_name += "_padding" if opt.padding_size > 0 else ''
+            model_name += "_rotation{}".format(str(opt.max_rotation_angle)) if opt.max_rotation_angle > 0 else ''
+            model_name += "_{}".format(opt.data_format_target)
+            model_name += opt.additional_name
+
+            os.makedirs(os.path.join('./checkpoints', dataset_name, 'Image', 'Training', model_name), exist_ok=True)
+            os.makedirs(os.path.join('./checkpoints', dataset_name, 'Image', 'Test', model_name), exist_ok=True)
+            os.makedirs(os.path.join('./checkpoints', dataset_name, 'Model', model_name), exist_ok=True)
             opt.image_dir = os.path.join('./checkpoints', dataset_name, 'Image/Training', model_name)
-        else:
-            opt.image_dir = os.path.join('./checkpoints', dataset_name, 'Image/Test', model_name)
 
-        opt.model_dir = os.path.join('./checkpoints', dataset_name, 'Model', model_name)
-        log_path = os.path.join('./checkpoints/', dataset_name, 'Model', model_name, 'opt.txt')
+            opt.model_dir = os.path.join('./checkpoints', dataset_name, 'Model', model_name)
+            log_path = os.path.join('./checkpoints/', dataset_name, 'Model', model_name, 'opt.txt')
 
-        if opt.debug:
-            opt.display_freq = 1
-            opt.epoch_decay = 2
-            opt.n_epochs = 4
-            opt.report_freq = 1
-            opt.save_freq = 1
+            if opt.debug:
+                opt.display_freq = 1
+                opt.epoch_decay = 2
+                opt.n_epochs = 4
+                opt.report_freq = 1
+                opt.save_freq = 1
 
-            return opt
+                return opt
 
-        if os.path.isfile(log_path) and opt.is_train:
-            permission = input(
-                "{} log already exists. Do you really want to overwrite this log? Y/N. : ".format(model_name + '/opt'))
-            if permission in ['y', 'Y', 'yes']:
-                pass
-            else:
-                permission = input("Do you want to resume training {}? Y/N. : ".format(model_name))
+            if os.path.isfile(log_path) and opt.is_train:
+                permission = input(
+                    "{} log already exists. Do you really want to overwrite this log? Y/N. : ".format(model_name + '/opt'))
                 if permission in ['y', 'Y', 'yes']:
-                    return opt
-
+                    pass
                 else:
-                    raise NotImplementedError("Please check {}".format(log_path))
+                    permission = input("Do you want to resume training {}? Y/N. : ".format(model_name))
+                    if permission in ['y', 'Y', 'yes']:
+                        return opt
 
-        with open(os.path.join(opt.model_dir, 'Analysis.txt'), 'wt') as analysis:
-            analysis.write('Iteration, CorrCoef_TUMF, CorrCoef_1x1, CorrCoef_2x2, CorrCoef_4x4, CorrCoef_8x8, '
-                           'R1_mean, R1_std, R2_mean, R2_std\n')
+                    else:
+                        raise NotImplementedError("Please check {}".format(log_path))
 
-            analysis.close()
+            with open(os.path.join(opt.model_dir, 'Analysis.txt'), 'wt') as analysis:
+                analysis.write('Iteration, CorrCoef_TUMF, CorrCoef_1x1, CorrCoef_2x2, CorrCoef_4x4, CorrCoef_8x8, '
+                               'R1_mean, R1_std, R2_mean, R2_std\n')
 
-        args = vars(opt)
-        with open(log_path, 'wt') as log:
-            log.write('-' * 50 + 'Options' + '-' * 50 + '\n')
-            print('-' * 50 + 'Options' + '-' * 50)
-            for k, v in sorted(args.items()):
-                log.write('{}: {}\n'.format(str(k), str(v)))
-                print("{}: {}".format(str(k), str(v)))
-            log.write('-' * 50 + 'End' + '-' * 50)
-            print('-' * 50 + 'End' + '-' * 50)
-            log.close()
+                analysis.close()
+
+            args = vars(opt)
+            with open(log_path, 'wt') as log:
+                log.write('-' * 50 + 'Options' + '-' * 50 + '\n')
+                print('-' * 50 + 'Options' + '-' * 50)
+                for k, v in sorted(args.items()):
+                    log.write('{}: {}\n'.format(str(k), str(v)))
+                    print("{}: {}".format(str(k), str(v)))
+                log.write('-' * 50 + 'End' + '-' * 50)
+                print('-' * 50 + 'End' + '-' * 50)
+                log.close()
+
+        else:
+            # opt.image_dir = os.path.join('./checkpoints', opt.dataset_name, 'Image/Test', opt.model_name)
+
+            dataset_name = opt.dataset_name
+            model_name = opt.model_name
+            iteration = str(opt.iteration)
+
+            if "HD" in model_name:
+                opt.HD = True
+
+            dir_model = './checkpoints/{}/Model/{}'.format(dataset_name, model_name)
+
+            if os.path.isfile(os.path.join(dir_model, iteration + '_dict.pt')):
+                opt.path_model = './checkpoints/{}/Model/{}/{}_dict.pt'.format(dataset_name, model_name, iteration)
+
+            elif os.path.isfile(os.path.join(dir_model, iteration + '_G.pt')):
+                opt.path_model = './checkpoints/{}/Model/{}/{}_G.pt'.format(dataset_name, model_name, iteration)
+
+            else:
+                raise FileNotFoundError
+
+            opt.dir_image_save = './checkpoints/{}/Image/Test/{}/{}'.format(dataset_name, model_name, iteration)
+            os.makedirs(opt.dir_image_save, exist_ok=True)
+
+            if not opt.no_save_npy:
+                opt.dir_npy_save = './checkpoints/{}/npy/Test/{}/{}'.format(dataset_name, model_name, iteration)
+                os.makedirs(opt.dir_npy_save, exist_ok=True)
 
         return opt
 
@@ -150,3 +176,6 @@ class TestOption(BaseOption):
 
         self.parser.add_argument('--is_train', type=bool, default=False, help='test flag')
         self.parser.add_argument('--no_shuffle', type=bool, default=True, help='if you want to shuffle the order')
+        self.parser.add_argument('--iteration', type=int, default=490000, help='the iteration of the model')
+        self.parser.add_argument('--model_name', type=str, default="pix2pixHD_npy_corrected", help="the name of the model")
+        self.parser.add_argument('--no_save_npy', action="store_true", default=False)
